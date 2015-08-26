@@ -1,0 +1,227 @@
+---
+title: "Vignette Title"
+author: "Vignette Author"
+date: "`r Sys.Date()`"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Vignette Title}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+Vignettes are long form documentation commonly included in packages. Because they are part of the distribution of the package, they need to be as compact as possible. The `html_vignette` output type provides a custom style sheet (and tweaks some options) to ensure that the resulting html is as small as possible. The `html_vignette` format:
+
+- Never uses retina figures
+- Has a smaller default figure size
+- Uses a custom CSS stylesheet instead of the default Twitter Bootstrap style
+
+## Vignette Info
+
+Note the various macros within the `vignette` section of the metadata block above. These are required in order to instruct R how to build the vignette. Note that you should change the `title` field and the `\VignetteIndexEntry` to match the title of your vignette.
+
+## Styles
+
+The `html_vignette` template includes a basic CSS theme. To override this theme you can specify your own CSS in the document metadata as follows:
+
+    output: 
+      rmarkdown::html_vignette:
+        css: mystyles.css
+
+## Figures
+
+The figure sizes have been customised so that you can easily put two images side-by-side. 
+
+```{r, fig.show='hold'}
+plot(1:10)
+plot(10:1)
+```
+
+You can enable figure captions by `fig_caption: yes` in YAML:
+
+    output:
+      rmarkdown::html_vignette:
+        fig_caption: yes
+
+Then you can use the chunk option `fig.cap = "Your figure caption."` in **knitr**.
+
+## More Examples
+
+You can write math expressions, e.g. $Y = X\beta + \epsilon$, footnotes^[A footnote here.], and tables, e.g. using `knitr::kable()`.
+
+```{r, echo=FALSE, results='asis'}
+knitr::kable(head(mtcars, 10))
+```
+
+Also a quote using `>`:
+
+> "He who gives up [code] safety for [code] speed deserves neither."
+([via](https://twitter.com/hadleywickham/status/504368538874703872))
+
+
+
+
+.shiny-flow-layout > div { width: 210px;}
+require(ggplot2)
+
+#Access data locally:
+if ((substr(getwd(),1,1) == "I") ) {
+  setwd("I:/PUBLIC/PEDS/R Programs/eHars_Dash/")
+  } else if ((substr(getwd(),1,1) == "C") ){
+    setwd("C:/Users/elliott/My Documents/R/eHars_Dash/")
+    } else if((substr(getwd(),1,2) =="/t")) { setwd("/srv/shiny-server/eHARS_Dash/")
+      } else setwd("/srv/connect/apps/eHARS_Dash/") 
+
+if(file.exists("./data/ehars.Rda")){
+  load("./data/ehars.Rda")
+  } else {
+    source("./code/import.R")
+    eharsdata(".data/ehars.Rda")
+    # eharsdata(".data/ehars.Rda", 'O:/DATA_OUT/LA00/Person/person.csv')
+
+  }
+
+
+varlst <- c("none", "race","age_cat", "trans_categ","birth_sex")
+
+# if(!is.null(input$var_1) && !is.null(outVar())) {
+# observe({
+#    if(input$selectall == 0) return(NULL) 
+#   else if (input$selectall%%2 == 0) {
+#     updateCheckboxGroupInput(session,"variables2",paste("Choose",input$var_1),choices=outVar())
+#     } else  {
+#       updateCheckboxGroupInput(session,"variables2",paste("Choose",input$var_1),
+#                                choices=outVar(),selected=outVar())
+#       }
+# 
+# if(!is.null(input$selectall2) && !is.null(input$var_2) && !is.null(outVar3())){
+#   if(input$selectall2 == 0) return(NULL) 
+#   else if (input$selectall2%%2 == 0) {
+#     updateCheckboxGroupInput(session,"variables3",paste("Choose",input$var_2),choices=outVar3())
+#     } else {
+#       updateCheckboxGroupInput(session,"variables3",paste("Choose",input$var_2),
+#                                choices=outVar3(),selected=outVar3())
+#     }
+# 
+# })
+# }
+
+outVar <- reactive({
+  vars <- sort(unique(as.vector(ehars[[input$var_1]][ehars[[input$var_1]] != ''])))
+  return(vars)
+  })
+
+output$variables = renderUI({
+      if(!is.null(outVar())){ inputPanel(
+      actionLink("selectall","Select All/None"),
+      checkboxGroupInput('variables2', paste("Choose",input$var_1), selected=NULL, outVar()))}})
+
+outVar2 <- reactive({
+  vars <- unique(c("none",varlst[!(varlst %in% input$var_1)]))
+  return(vars)
+  })
+
+output$variables2 = renderUI({
+  selectInput("var_2", label = "Secondary Variable:",
+              choices = outVar2()) 
+  })
+
+outVar3 <- reactive({
+  vars <- if(!is.null(input$var_2)) sort(unique(as.vector(ehars[[input$var_2]][ehars[[input$var_2]] != ''])))
+  return(vars)
+  })
+
+output$variables3 = renderUI({
+  if(!is.null(outVar3())){inputPanel(
+    actionLink("selectall2","Select All/None"),
+    checkboxGroupInput('variables3', paste("Choose",input$var_2), selected=NULL, outVar3()))
+    }
+  })
+
+data5 <- reactive({
+  varlst = c("count", input$var1, input$var_1, input$var_2)
+  if(length(input$variables2)==0) varlst[3] = "none"
+  if(length(input$variables3)==0) varlst[4] = "none"
+  varlst = varlst[!(varlst %in% "none")]
+
+  if(!is.null(input$variables2) && !is.null(input$variables3) && !is.null(input$var_1) && !is.null(input$var_2)
+     && length(input$variables2) && length(input$variables3) > 0  && !(input$var_1 == "none") && !(input$var_2 == "none")) {
+    data = ehars[which(ehars[[input$var_1]] %in% input$variables2 & ehars[[input$var_2]] %in% input$variables3),]
+      data2 <- aggregate(data$count, by=list(data[[input$var1]],data[[input$var_1]],data[[input$var_2]]), FUN=sum)
+      data2$colgroup <- paste(data2[['Group.2']],data2[['Group.3']])
+  } else {
+    if(!is.null(input$variables2) && length(input$variables2) > 0 && !is.null(input$var_1) && !(input$var_1 == "none")) {
+      data = ehars[which(ehars[[input$var_1]] %in% input$variables2),]
+      data2 <- aggregate(data$count, by=list(data[[input$var1]],data[[input$var_1]]), FUN=sum)
+      data2$colgroup <- data2[['Group.2']]
+      } else {
+        if(!is.null(input$variables3) && length(input$variables3) > 0 && !is.null(input$var_2) && !(input$var_2 == "none")) {
+          data = ehars[which(ehars[[input$var_2]] %in% input$variables3),]
+          data2 <- aggregate(data$count, by=list(data[[input$var1]],data[[input$var_2]]), FUN=sum)
+          data2$colgroup <- data2[['Group.2']]
+          } else {
+            data = ehars
+            data2 <- aggregate(data$count, by=list(data[[input$var1]]), FUN=sum)
+            }
+      }
+    }
+
+names(data2)[1] <- input$var1
+if (length(varlst)>2) names(data2)[length(names(data2))-1] <- "count"
+else names(data2)[length(names(data2))] <- "count"
+
+
+  data3 <- subset(data2, data2[1]>=input$year1 & data2[1]<=input$year2)
+
+  data3
+
+})
+
+plot4 <- reactive({
+  if(length(names(data5()))>3) qplot(data5()[[input$var1]], count, data = data5(), color = data5()$colgroup, xlab=names(data5())[1])
+  else qplot(data5()[[input$var1]], count, data = data5(), xlab=names(data5())[1])
+        })
+
+
+output$downloadData <- downloadHandler(
+    filename = function() { 'data.csv' },
+    content = function(file) {
+      write.csv(data5(), file)
+    }
+  )
+
+
+shinyUI(  
+  fluidPage(
+  tags$head(
+    tags$link(rel = "stylesheet", type = "text/css", href = "./www/bootstrap.css")),
+    tags$head(tags$style(HTML('
+
+    .shiny-flow-layout > div {
+     width: 210px;
+      }
+    '))),
+
+    headerPanel("HIV Diagnoses, AIDS Diagnoses, HIV/AIDS Deaths in Louisiana - Ficitonal Data"),
+          inputPanel(
+     selectInput("var1", label = "Choose Variable:",
+              choices = c("yr_hiv", "yr_aids", "yr_death")),
+            selectInput("year1", label = "Start Year:",
+              choices = c(1979:2013)),
+            selectInput("year2", label = "End Year:",
+              choices = c(1979:2013),selected=2013),
+            div(),
+            selectInput("var_1", label = "Primary Variable:", choices = varlst),
+            uiOutput('variables'),
+            uiOutput('variables2'),
+            uiOutput('variables3')
+          ),    
+          tabsetPanel(
+             tabPanel('plot',     renderPlot(plot4(), width = 1000)),
+             tabPanel('table', renderDataTable({ data5() }, options = list(paging = FALSE, searching=FALSE))),
+             tabPanel('download', downloadButton('downloadData', 'Download data'))
+)
+             )
+
+
+        )
+
